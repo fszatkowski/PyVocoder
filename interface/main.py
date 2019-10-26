@@ -1,4 +1,4 @@
-from audio.recording import AudioRecord
+from audio.recording import AudioSignal
 from audio.processing import Vocoder
 
 

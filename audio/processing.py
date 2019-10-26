@@ -1,31 +1,11 @@
-from dataclasses import dataclass
-from typing import *
-
-import numpy
-
-from audio.recording import AudioRecord
-
-
-# TODO - UNIT TESTS!
-
-
-@dataclass
-class Filter:
-    frequency: float = 0
-    amplitude: int = 0
-
-
-@dataclass
-class FilteredAudioRecord(AudioRecord):
-    filters: List[Filter] = None
+from audio.recording import AudioSignal
 
 
 class Vocoder:
-    filters: List[Filter] = []
-    records: List[FilteredAudioRecord] = []
+    filters = []
 
     # TODO how tf it works
-    def __init__(self, filters: List[Filter]):
+    def __init__(self, filters):
         self.filters = filters
 
     def add_filter(self):
@@ -34,7 +14,7 @@ class Vocoder:
     def remove_filter(self):
         pass
 
-    def modulate(self, recording: AudioRecord) -> FilteredAudioRecord:
+    def modulate(self, recording: AudioSignal):
         pass
 
     def __str__(self):
