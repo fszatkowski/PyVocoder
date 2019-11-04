@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from scipy.fftpack import rfft, irfft
 import numpy as np
 import seaborn as sns
-from matplotlib import pyplot as plt
 import sounddevice as sd
 import soundfile as sf
+from matplotlib import pyplot as plt
+from scipy.fftpack import irfft, rfft
 
 
 @dataclass
@@ -26,22 +26,27 @@ class AudioSignal:
 
     @staticmethod
     def from_wav(input_path: str) -> "AudioSignal":
-        # TODO check if path and extension are correct and throw ValueError if not
+        if not input_path.endswith(".wav"):
+            raise ValueError(f"File has to be in wav format: {input_path}")
         data, sample_rate = sf.read(input_path, dtype="float32", always_2d=True)
         duration = data.shape[0] / sample_rate
         return AudioSignal(data, sample_rate, duration, input_path)
 
     @staticmethod
     def from_mp3(input_path: str) -> "AudioSignal":
-        # TODO check if path and extension are correct and throw ValueError if not
-        #  also check if loading works for mp3
+        # TODO check if loading works for mp3
+        if not input_path.endswith(".mp3"):
+            raise ValueError(f"File has to be in mp3 format: {input_path}")
         data, sample_rate = sf.read(input_path, dtype="float32", always_2d=True)
         duration = data.shape[0] / sample_rate
         return AudioSignal(data, sample_rate, duration, input_path)
 
     def stereo_to_mono(self) -> np.array:
         """ convert stereo signal to mono for audio processing"""
-        return np.sum(self.data, axis=1)/2.0
+        if len(self.data.shape) == 2:
+            return np.sum(self.data, axis=-1) / 2.0
+        else:
+            return self.data
 
     def play(self):
         if self.data is None:
@@ -59,9 +64,15 @@ class AudioSignal:
     def plot(self, step: int = 25):
         if self.data is None:
             raise AttributeError("AudioRecord is uninitialized.")
-        x = np.arange(0, self.duration, step*1/self.sample_rate)
-        y = self.stereo_to_mono()[::step]
-        print(x.shape, y.shape)
+        x = np.arange(0, self.duration, step * 1 / self.sample_rate)
+        dims = len(self.data.shape)
+        if dims == 2:
+            y = self.stereo_to_mono()
+        elif dims == 1:
+            y = self.data
+        else:
+            raise AttributeError(f"Data has incorrect number of dimensions: {dims}")
+        y = y[::step]
         sns.lineplot(x=x, y=y)
         plt.show()
 
@@ -76,41 +87,40 @@ class SpectralSignal:
 
     @staticmethod
     def from_audio(audio: AudioSignal) -> "SpectralSignal":
-        spectrum: np.array = np.abs(rfft(audio.stereo_to_mono()))
-        return SpectralSignal(spectrum, audio.sample_rate/2)
+        # TODO technically we should use abs but it might break inverting
+        #  so abs is used only for plotting
+        """
+        create spectrum from audio signal
+        right fft is used (computes only positive values since fft is simetric)
+        due to this, max_frequency is set to 0.5 * audio frequency
+        """
+        spectrum: np.array = rfft(audio.stereo_to_mono())
+        return SpectralSignal(spectrum, audio.sample_rate / 2.0)
 
     def plot(self, step: int = 25):
         if self.data is None:
             raise AttributeError("AudioRecord is uninitialized.")
-        x = np.arange(0, self.max_frequency, step*self.max_frequency/self.data.shape[0])
-        y = self.data[::step]
+        x = np.arange(
+            0, self.max_frequency, step * self.max_frequency / self.data.shape[0]
+        )
+        y = abs(self.data[::step])
         sns.lineplot(x=x, y=y)
         plt.show()
 
-    def inverse(self) -> AudioSignal:
-        # TODO doesn't work yet :(
-
+    def invert(self) -> AudioSignal:
+        """
+        when transforming audio to spectral signal, max_frequency is 0.5*audio sampling frequency
+        so inverted signal audio frequency has to be set as twice max_frequency
+        """
         inverse_fft = irfft(self.data)
-        freq = 2*self.max_frequency
-        return AudioSignal(inverse_fft, freq, inverse_fft.shape[0]/freq)
+        freq = 2 * self.max_frequency
+        duration = inverse_fft.shape[0] / freq
+        return AudioSignal(inverse_fft, freq, duration)
 
 
 if __name__ == "__main__":
-    # print("Recording... (3s)")
-    # record1 = AudioRecord.from_microphone(44100, 3.0)
-    # print("Recording finished")
-    # record1.play()
-    # record1.save("../data/test.wav")
-
-    # print("Playing from saved recording.")
-    # record2 = AudioRecord.from_wav("../data/test.wav")
-    # record2.play()
-
-    print("Playing from downloaded.")
-    record3 = AudioSignal.from_wav("../data/1.wav")
-    record3.plot(step=100)
-    spect = record3.spectrum()
-    spect.plot(100)
-    ispect = spect.inverse()
-    ispect.plot()
-    # record3.play()
+    test_record = AudioSignal.from_wav("../data/1.wav")
+    spect = test_record.spectrum()
+    ispect = spect.invert()
+    diff = ispect.data - test_record.stereo_to_mono()
+    assert np.all(diff < 1e-6)
