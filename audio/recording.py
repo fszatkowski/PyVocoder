@@ -55,13 +55,13 @@ class AudioSignal:
         sd.play(self.data, self.sample_rate)
         sd.wait()
 
-    def save(self, output_filename: str):
+    def save(self, output_filename: str, log: bool = False):
         if self.data is None:
             raise AttributeError("AudioRecord is uninitialized.")
         sf.write(output_filename, self.data, int(self.sample_rate))
         sd.wait()
 
-    def plot(self, step: int = 25):
+    def plot(self, step: int = 25, log: bool = False):
         if self.data is None:
             raise AttributeError("AudioRecord is uninitialized.")
         x = np.arange(0, self.duration, step * 1 / self.sample_rate)
@@ -73,6 +73,8 @@ class AudioSignal:
         else:
             raise AttributeError(f"Data has incorrect number of dimensions: {dims}")
         y = y[::step]
+        if log:
+            y = np.log10(y / max(y))
         sns.lineplot(x=x, y=y)
         plt.show()
 
@@ -97,13 +99,15 @@ class SpectralSignal:
         spectrum: np.array = rfft(audio.stereo_to_mono())
         return SpectralSignal(spectrum, audio.sample_rate / 2.0)
 
-    def plot(self, step: int = 25):
+    def plot(self, step: int = 25, log: bool = False):
         if self.data is None:
             raise AttributeError("AudioRecord is uninitialized.")
         x = np.arange(
             0, self.max_frequency, step * self.max_frequency / self.data.shape[0]
         )
         y = abs(self.data[::step])
+        if log:
+            y = np.log10(y / max(y))
         sns.lineplot(x=x, y=y)
         plt.show()
 
