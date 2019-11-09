@@ -1,47 +1,21 @@
-from audio.recording import AudioSignal, SpectralSignal
+from audio.recording import AudioSignal, STFTSignal
 from dataclasses import dataclass
 import numpy as np
 from typing import *
 
-# TODO - fix log plotting
-
 
 @dataclass
 class Filter:
-    # TODO right now filter works by setting values outside of <frequency - bandwidth/2, frequency + bandwidth/2> to 0
-    #  not sure if it's really correct
     frequency: float
     bandwidth: float
-
-    def filter(self, signal: AudioSignal) -> SpectralSignal:
-        spectrum = SpectralSignal.from_audio(signal)
-        step = spectrum.data.shape[0] / spectrum.max_frequency
-        filter_mask = frequency_bandwidth_mask(
-            self.frequency, self.bandwidth, spectrum.data.shape[0], step
-        )
-        spectrum.data[~filter_mask] = 0.0
-        return spectrum
 
 
 @dataclass
-class FilteredBandwidth:
+class CompressedBandwidth:
     """ This is part of the frequency spectrum covered by filter in compressed form """
-
-    frequency: float
-    bandwidth: float
-    amplitude: float
-
-    def noise_modulate(self, sample_rate: float, n_samples: float) -> SpectralSignal:
-        """ White noise = constant spectrum
-        modulating noise with amplitude in audio domain
-        equals setting amplitudes in given range of frequencies to the value of this amplitude in frequency domain"""
-        signal = np.zeros(int(n_samples))
-        step = sample_rate / n_samples
-        mask = frequency_bandwidth_mask(
-            self.frequency, self.bandwidth, int(n_samples), step
-        )
-        signal[mask] = self.amplitude
-        return SpectralSignal(signal, sample_rate)
+    f_min_idx: int
+    f_max_idx: int
+    amplitude: np.array
 
 
 class Vocoder:
@@ -56,41 +30,48 @@ class Vocoder:
     def remove_filter(self, f: Filter):
         self.filters.remove(f)
 
-    def modulate(self, audio: AudioSignal) -> AudioSignal:
-        # compute filtered signals
-        compressed_signals = []
+    def modulate(
+        self, audio: AudioSignal, n_samples_per_window: int = None
+    ) -> Tuple[STFTSignal, List[CompressedBandwidth]]:
+        # compute compress bandwidth for each filter
+        stft = audio.spectrum(n_samples_per_window)
+        discrete_frequencies = stft.f
+        compressed = []
 
-        filtered_signal = None
         for f in self.filters:
-            filtered_signal = f.filter(audio)
-            max_amplitude = np.max(filtered_signal.data)
-            compressed_signal = FilteredBandwidth(
-                f.frequency, f.bandwidth, max_amplitude
-            )
-            compressed_signals.append(compressed_signal)
+            filtered_frequencies = discrete_frequencies[
+                    (discrete_frequencies >= (f.frequency - f.bandwidth))
+                    & (discrete_frequencies <= (f.frequency + f.bandwidth))
+                ]
 
-        # create new signal by modulating noise with filter amplitudes and adding each other
-        n_samples = filtered_signal.data.shape[0]
-        sample_rate = filtered_signal.max_frequency
-        modulated_noises = [
-            cs.noise_modulate(sample_rate, n_samples).data for cs in compressed_signals
-        ]
-        stacked_signals = np.stack(modulated_noises, axis=-1)
-        stacked_signals_sum = np.sum(stacked_signals, axis=-1)
-        combined_signal = SpectralSignal(stacked_signals_sum, sample_rate)
+            if filtered_frequencies.size != 0:
+                min_f_idx = np.argwhere(discrete_frequencies == filtered_frequencies[0])[0,0]
+                max_f_idx = np.argwhere(discrete_frequencies == filtered_frequencies[-1])[0,0]
+                if max_f_idx == min_f_idx:
+                    bandwidth = stft.zxx[max_f_idx, :]
+                    compressed.append(CompressedBandwidth(min_f_idx, max_f_idx, bandwidth))
+                else:
+                    bandwidth = stft.zxx[min_f_idx:max_f_idx, :]
+                    max_amplitudes = np.argmax(abs(bandwidth), axis=0)
 
-        return combined_signal.invert()
+                    # idk how to do it smarter
+                    amplitudes = bandwidth[0, :]
+                    for i in range(0, max_amplitudes.shape[0]):
+                        amplitudes[i] = bandwidth[max_amplitudes[i], i]
+                    compressed.append(CompressedBandwidth(min_f_idx, max_f_idx, amplitudes))
+
+        # use compressed bandwidths to recreate signal
+        zxx = np.copy(stft.zxx)
+        zxx[:,:] = 0
+        for b in compressed:
+            if b.f_min_idx == b.f_max_idx:
+                zxx[b.f_max_idx, :] = b.amplitude
+            else:
+                zxx[b.f_min_idx : b.f_max_idx, :] = b.amplitude
+        stft.zxx = zxx
+        return stft, compressed
 
     def __str__(self):
         return " ".join(
             [f"f: {f.frequency}\tbandwidth: {f.bandwidth}\n" for f in self.filters]
         )
-
-
-def frequency_bandwidth_mask(
-    frequency: float, bandwidth: float, n_values: int, step: float
-) -> np.array:
-    min_idx = (frequency - bandwidth / 2) / step
-    max_idx = (frequency + bandwidth / 2) / step
-    indices = np.array([i for i in range(0, int(n_values))])
-    return (indices > min_idx) * (indices < max_idx)

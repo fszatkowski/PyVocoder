@@ -5,14 +5,14 @@ import seaborn as sns
 import sounddevice as sd
 import soundfile as sf
 from matplotlib import pyplot as plt
-from scipy.fftpack import irfft, rfft
+from scipy.signal import stft, istft
 
 
 @dataclass
 class AudioSignal:
-    data: np.array = None
-    sample_rate: float = None
-    duration: float = None
+    data: np.array
+    sample_rate: float
+    duration: float
     filename: str = None
 
     @staticmethod
@@ -61,10 +61,7 @@ class AudioSignal:
         sf.write(output_filename, self.data, int(self.sample_rate))
         sd.wait()
 
-    def plot(self, step: int = 25, log: bool = False):
-        if self.data is None:
-            raise AttributeError("AudioRecord is uninitialized.")
-        x = np.arange(0, self.duration, step * 1 / self.sample_rate)
+    def plot(self, step: int = 25):
         dims = len(self.data.shape)
         if dims == 2:
             y = self.stereo_to_mono()
@@ -73,58 +70,46 @@ class AudioSignal:
         else:
             raise AttributeError(f"Data has incorrect number of dimensions: {dims}")
         y = y[::step]
-        if log:
-            y = np.log10(y / max(y))
+
+        x = np.arange(0, y.shape[0] * step * 1/self.sample_rate, step*1/self.sample_rate)
         sns.lineplot(x=x, y=y)
         plt.show()
 
-    def spectrum(self) -> "SpectralSignal":
-        return SpectralSignal.from_audio(self)
+    def spectrum(self, n_samples_per_segment: int = None) -> "STFTSignal":
+        return STFTSignal.from_audio(self, n_samples_per_segment)
 
 
 @dataclass
-class SpectralSignal:
-    data: np.array = None
-    max_frequency: float = None
+class STFTSignal:
+    zxx: np.array
+    f: np.array
+    t: np.array
+    sample_rate: float
 
     @staticmethod
-    def from_audio(audio: AudioSignal) -> "SpectralSignal":
+    def from_audio(audio: AudioSignal, n_samples_per_segment: int = None) -> "STFTSignal":
         # TODO technically we should use abs but it might break inverting
         #  so abs is used only for plotting
         """
-        create spectrum from audio signal
-        right fft is used (computes only positive values since fft is simetric)
-        due to this, max_frequency is set to 0.5 * audio frequency
+        computes stft from audio signal with given number of samples in window
         """
-        spectrum: np.array = rfft(audio.stereo_to_mono())
-        return SpectralSignal(spectrum, audio.sample_rate / 2.0)
+        if n_samples_per_segment is None:
+            n_samples_per_segment = 256
+        f, t, zxx = stft(audio.stereo_to_mono(), nperseg=n_samples_per_segment, fs=audio.sample_rate)
+        return STFTSignal(zxx, f, t, audio.sample_rate)
 
-    def plot(self, step: int = 25, log: bool = False):
-        if self.data is None:
-            raise AttributeError("AudioRecord is uninitialized.")
-        x = np.arange(
-            0, self.max_frequency, step * self.max_frequency / self.data.shape[0]
-        )
-        y = abs(self.data[::step])
-        if log:
-            y = np.log10(y / max(y))
-        sns.lineplot(x=x, y=y)
+    def plot(self, f_step: int = 1, t_step: int = 1):
+        z = np.abs(self.zxx[::f_step, ::t_step])
+
+        t = self.t[::t_step]
+        f = self.f[::f_step]
+
+        plt.pcolormesh(t, f, z, vmin=0, vmax=np.max(z))
+        plt.title('STFT Magnitude')
+        plt.ylabel('Frequency [Hz]')
+        plt.xlabel('Time [sec]')
         plt.show()
 
     def invert(self) -> AudioSignal:
-        """
-        when transforming audio to spectral signal, max_frequency is 0.5*audio sampling frequency
-        so inverted signal audio frequency has to be set as twice max_frequency
-        """
-        inverse_fft = irfft(self.data)
-        freq = 2 * self.max_frequency
-        duration = inverse_fft.shape[0] / freq
-        return AudioSignal(inverse_fft, freq, duration)
-
-
-if __name__ == "__main__":
-    test_record = AudioSignal.from_wav("../data/1.wav")
-    spect = test_record.spectrum()
-    ispect = spect.invert()
-    diff = ispect.data - test_record.stereo_to_mono()
-    assert np.all(diff < 1e-6)
+        t, inverse_stft = istft(self.zxx, self.sample_rate)
+        return AudioSignal(inverse_stft, self.sample_rate, t[-1])
