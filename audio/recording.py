@@ -49,15 +49,12 @@ class AudioSignal:
             return self.data
 
     def play(self):
-        if self.data is None:
-            raise AttributeError("AudioRecord is uninitialized.")
         sd.stop()
+        # for some reason sd doesnt work with mono so signal is copied
         sd.play(self.data, self.sample_rate)
         sd.wait()
 
     def save(self, output_filename: str, log: bool = False):
-        if self.data is None:
-            raise AttributeError("AudioRecord is uninitialized.")
         sf.write(output_filename, self.data, int(self.sample_rate))
         sd.wait()
 
@@ -112,4 +109,6 @@ class STFTSignal:
 
     def invert(self) -> AudioSignal:
         t, inverse_stft = istft(self.zxx, self.sample_rate)
-        return AudioSignal(inverse_stft, self.sample_rate, t[-1])
+        # convert to stereo
+        stereo = np.column_stack((inverse_stft, inverse_stft))
+        return AudioSignal(stereo, self.sample_rate, t[-1])

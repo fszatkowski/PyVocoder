@@ -17,7 +17,9 @@ if __name__ == "__main__":
 #    audio = AudioSignal.from_wav("/home/filip/PycharmProjects/vocoder/data/1.wav")
 
     print("Record 3s audio.")
-    audio = AudioSignal.from_microphone(44100, 10)
+    audio = AudioSignal.from_microphone(44100, 3)
+    print("Playing back")
+    audio.play()
     audio.plot(args.plot_resolution)
     audio_spectrum = audio.spectrum()
     audio_spectrum.plot()
@@ -40,4 +42,5 @@ if __name__ == "__main__":
     print("Playing coded version.")
     inverted = compressed_spectrum.invert()
     inverted.plot(args.plot_resolution)
+    print(inverted.data.shape)
     inverted.play()
