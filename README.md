@@ -7,3 +7,6 @@ install PortAudio for linux with:
 install requirements with:
 
 `pip install -r requirements.txt`
+
+<img src="img/screen.png" width="640px" alt="screenshot">
+
