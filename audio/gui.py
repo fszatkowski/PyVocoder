@@ -4,7 +4,7 @@ import PySimpleGUI as sg
 
 # input column fields
 column_in = [
-    [sg.Text('input file', size=(8, 1)), sg.Input(default_text='../data/2.wav', key='in_path'), sg.FileBrowse()],
+    [sg.Text('input file', size=(8, 1)), sg.Input(default_text='../data/1.wav', key='in_path'), sg.FileBrowse()],
     [sg.Button('play input audio', key='play_in_audio')],
     [sg.Image(filename='../img/test.png', key='canvas_in_stft')],
     [sg.Image(filename='../img/test.png', key='canvas_in_signal')]

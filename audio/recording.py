@@ -95,16 +95,14 @@ class STFTSignal:
         f, t, zxx = stft(audio.stereo_to_mono(), nperseg=n_samples_per_segment, fs=audio.sample_rate)
         return STFTSignal(zxx, f, t, audio.sample_rate)
 
-    def plot(self, f_step: int = 1, t_step: int = 1) -> Any:
-        z = np.abs(self.zxx[::f_step, ::t_step])
-
+    def plot(self, f_step: int = 1, t_step: int = 5) -> Any:
+        tmp = int(self.t.size/10)
         t = self.t[::t_step]
-        f = self.f[::f_step]
-
+        f = self.f[:tmp:f_step]
+        z = np.abs(self.zxx[:tmp:f_step, ::t_step])
         plot = plt.pcolormesh(t, f, z, vmin=0, vmax=np.max(z))
-        plt.title('STFT Magnitude')
-        plt.ylabel('Frequency [Hz]')
-        plt.xlabel('Time [sec]')
+        plt.ylim(0, max(f)/6)
+
         return plot
 
     def invert(self) -> AudioSignal:
