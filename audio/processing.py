@@ -20,26 +20,16 @@ class CompressedBandwidth:
 
 
 class Vocoder:
-    filters: List[Filter] = []
-
-    def __init__(self, filters):
-        self.filters = filters
-
-    def add_filter(self, frequency: int, width: int):
-        self.filters.append(Filter(frequency, width))
-
-    def remove_filter(self, f: Filter):
-        self.filters.remove(f)
-
+    @staticmethod
     def modulate(
-        self, audio: AudioSignal, n_samples_per_window: int = None
+        audio: AudioSignal, filters: Sequence[Filter], n_samples_per_window: int = None
     ) -> Tuple[STFTSignal, List[CompressedBandwidth], float]:
         # compute compress bandwidth for each filter
         stft = audio.spectrum(n_samples_per_window)
         stft_frequencies = stft.f
         modulated_bandwidths = []
 
-        for f in self.filters:
+        for f in filters:
             # get the frequencies corresponding to filter's bandwidth
             mask = (stft_frequencies >= (f.frequency - f.bandwidth)) & (
                 stft_frequencies <= (f.frequency + f.bandwidth)
@@ -62,7 +52,8 @@ class Vocoder:
                     # idk how to do it smarter - np.max behaves weirdly with complex numbers
                     # so the code below is not really optimal and could be improved
                     max_amplitudes = np.argmax(abs(bandwidth), axis=0)
-                    amplitudes = np.zeros((1, bandwidth.shape[1]))
+                    # amplitudes = np.zeros((1, bandwidth.shape[1]))
+                    amplitudes = np.copy(bandwidth[0, :])
                     for i in range(0, max_amplitudes.shape[0]):
                         amplitudes[i] = bandwidth[max_amplitudes[i], i]
                     modulated_bandwidths.append(
@@ -85,11 +76,6 @@ class Vocoder:
             len(modulated_bandwidths) * (modulated_bandwidths[0].amplitude.shape[0] + 2)
         )
         return stft, modulated_bandwidths, compression_level
-
-    def __str__(self):
-        return " ".join(
-            [f"f: {f.frequency}\tbandwidth: {f.bandwidth}\n" for f in self.filters]
-        )
 
 
 def _find_min_max_indices(

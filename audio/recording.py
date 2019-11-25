@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import *
 
 import numpy as np
 import seaborn as sns
@@ -69,8 +70,7 @@ class AudioSignal:
         y = y[::step]
 
         x = np.arange(0, y.shape[0] * step * 1/self.sample_rate, step*1/self.sample_rate)
-        sns.lineplot(x=x, y=y)
-        plt.show()
+        return sns.lineplot(x=x, y=y)
 
     def spectrum(self, n_samples_per_segment: int = None) -> "STFTSignal":
         return STFTSignal.from_audio(self, n_samples_per_segment)
@@ -95,17 +95,17 @@ class STFTSignal:
         f, t, zxx = stft(audio.stereo_to_mono(), nperseg=n_samples_per_segment, fs=audio.sample_rate)
         return STFTSignal(zxx, f, t, audio.sample_rate)
 
-    def plot(self, f_step: int = 1, t_step: int = 1):
+    def plot(self, f_step: int = 1, t_step: int = 1) -> Any:
         z = np.abs(self.zxx[::f_step, ::t_step])
 
         t = self.t[::t_step]
         f = self.f[::f_step]
 
-        plt.pcolormesh(t, f, z, vmin=0, vmax=np.max(z))
+        plot = plt.pcolormesh(t, f, z, vmin=0, vmax=np.max(z))
         plt.title('STFT Magnitude')
         plt.ylabel('Frequency [Hz]')
         plt.xlabel('Time [sec]')
-        plt.show()
+        return plot
 
     def invert(self) -> AudioSignal:
         t, inverse_stft = istft(self.zxx, self.sample_rate)

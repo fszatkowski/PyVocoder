@@ -2,28 +2,36 @@ from audio.processing import Vocoder, Filter
 from audio.recording import AudioSignal
 import numpy as np
 from dataclasses import dataclass
+import os
+import matplotlib.pyplot as plt
 
 
 @dataclass
 class Args:
     num_filters: int = 100
-    plot_resolution: int = 5
+    plot_resolution: int = 25
 
 
 if __name__ == "__main__":
     # args = parse_args()
-    args = Args(1000, 25)
+    args = Args(num_filters=3)
 
-#    audio = AudioSignal.from_wav("/home/filip/PycharmProjects/vocoder/data/1.wav")
+    # print(os.getcwd())
+    audio = AudioSignal.from_wav("../data/2.wav")
 
-    print("Record 3s audio.")
-    audio = AudioSignal.from_microphone(44100, 3)
-    print("Playing back")
+    # print("Record 3s audio.")
+    # audio = AudioSignal.from_microphone(44100, 3)
+    # print("Playing back")
     audio.play()
-    audio.plot(args.plot_resolution)
+    plt.figure()
+    plot = audio.plot()
+    plt.savefig("ASdasdas2")
+
     audio_spectrum = audio.spectrum()
-    audio_spectrum.plot()
-    print("Thanks.")
+    plt.figure()
+    plot = audio_spectrum.plot()
+    plt.savefig("ASdasdas")
+    #    print("Thanks.")
 
     num_filters = args.num_filters
     log_range = np.logspace(
@@ -35,8 +43,9 @@ if __name__ == "__main__":
     ]
 
     print("Modulating...")
-    v = Vocoder(filters)
-    compressed_spectrum, _ = v.modulate(audio)
+    v = Vocoder()
+    compressed_spectrum, _, compression_level = v.modulate(audio, filters)
+    print(f"compression level: {compression_level}\r\n")
     compressed_spectrum.plot()
 
     print("Playing coded version.")
