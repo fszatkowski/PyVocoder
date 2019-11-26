@@ -31,8 +31,8 @@ column_out = [
 # GUI's layout
 layout = [
     [
-        sg.Column(column_in, background_color="#F7F3EC"),
-        sg.Column(column_out, background_color="#F7F3EC"),
+        sg.Column(column_in, background_color="#F7F3EC", element_justification='center'),
+        sg.Column(column_out, background_color="#F7F3EC", element_justification='center'),
     ],
     [
         sg.Text("Number of filters: "),
@@ -44,7 +44,7 @@ layout = [
             enable_events=True,
         ),
         sg.Text("100", key="num_text"),
+        sg.Button("Process", size=(20, 1)),
     ],
     [sg.Text("Compression level: please compress first!", key="compression_level")],
-    [sg.Button("Process")],
 ]

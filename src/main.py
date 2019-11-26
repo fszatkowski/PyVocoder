@@ -12,7 +12,7 @@ dispatch_dictionary = {
 
 if __name__ == "__main__":
     params = Parameters()
-    window = sg.Window("Vocoder model", layout, no_titlebar=False)
+    window = sg.Window("Vocoder model", layout, no_titlebar=False, location=(0, 0), element_justification='center')
     while True:
         event, values = window.read(timeout=0)
         if event in (None, "Exit"):
