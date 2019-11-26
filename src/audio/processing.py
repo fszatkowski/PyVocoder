@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 import numpy as np
 
-from audio.recording import AudioSignal, STFTSignal
+from src.audio.recording import AudioSignal, STFTSignal
 
 
 @dataclass

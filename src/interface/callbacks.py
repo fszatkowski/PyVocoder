@@ -4,9 +4,9 @@ from os import path
 import matplotlib.pyplot as plt
 import numpy as np
 
-import constants
-from audio.processing import Filter, Vocoder
-from audio.recording import AudioSignal
+import src.constants as constants
+from src.audio.processing import Filter, Vocoder
+from src.audio.recording import AudioSignal
 
 
 @dataclass

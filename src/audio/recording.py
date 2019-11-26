@@ -99,11 +99,11 @@ class STFTSignal:
         return STFTSignal(zxx, f, t, audio.sample_rate)
 
     def plot(self, f_step: int = 1, t_step: int = 5) -> Any:
-        # TODO check tmp
-        tmp = int(self.t.size / 10)
+        # TODO check axis_lim
+        axis_lim = int(self.t.size / 10)
         t = self.t[::t_step]
-        f = self.f[:tmp:f_step]
-        z = np.abs(self.zxx[:tmp:f_step, ::t_step])
+        f = self.f[:axis_lim:f_step]
+        z = np.abs(self.zxx[:axis_lim:f_step, ::t_step])
         plot = plt.pcolormesh(t, f, z, vmin=0, vmax=np.max(z))
         plt.ylim(0, max(f) / 6)
 

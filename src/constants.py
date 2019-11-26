@@ -1,6 +1,6 @@
 import os
 
-RESOURCES = "resources"
+RESOURCES = "../resources"
 
 # GUI
 IMG_DIR = os.path.join(RESOURCES, "img")

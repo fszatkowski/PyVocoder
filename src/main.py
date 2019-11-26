@@ -1,5 +1,7 @@
-from interface.callbacks import Parameters, play_in_audio, play_out_audio, process
-from interface.gui import *
+from src.interface.callbacks import Parameters, play_in_audio, play_out_audio, process
+from src.interface.gui import *
+
+from src import constants
 
 dispatch_dictionary = {
     "Process": process,
@@ -28,8 +30,9 @@ if __name__ == "__main__":
             fun_to_call = dispatch_dictionary[event]
             fun_to_call(params)
         if event == "Process":
+            compression_level_message = f"Compression level: {params.compression_level:2.1f}%"
             window["compression_level"].update(
-                f"Compression level: {params.compression_level}%"
+                compression_level_message
             )
             window["canvas_in_stft"].update(filename=constants.INPUT_SPECTRUM)
             window["canvas_in_signal"].update(filename=constants.INPUT_SIGNAL)

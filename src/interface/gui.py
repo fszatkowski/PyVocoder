@@ -2,7 +2,7 @@
 
 import PySimpleGUI as sg
 
-import constants
+import src.constants as constants
 
 # input column fields
 column_in = [
@@ -37,7 +37,7 @@ layout = [
     [
         sg.Text("Number of filters: "),
         sg.Slider(
-            (10, 100),
+            (3, 100),
             key="number_of_filters",
             orientation="h",
             disable_number_display=True,
@@ -45,6 +45,6 @@ layout = [
         ),
         sg.Text("100", key="num_text"),
     ],
-    [sg.Text("Compression level: 0    ", key="compression_level")],
+    [sg.Text("Compression level: please compress first!", key="compression_level")],
     [sg.Button("Process")],
 ]
