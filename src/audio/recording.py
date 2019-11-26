@@ -6,7 +6,7 @@ import seaborn as sns
 import sounddevice as sd
 import soundfile as sf
 from matplotlib import pyplot as plt
-from scipy.signal import stft, istft
+from scipy.signal import istft, stft
 
 
 @dataclass
@@ -35,7 +35,6 @@ class AudioSignal:
 
     @staticmethod
     def from_mp3(input_path: str) -> "AudioSignal":
-        # TODO check if loading works for mp3
         if not input_path.endswith(".mp3"):
             raise ValueError(f"File has to be in mp3 format: {input_path}")
         data, sample_rate = sf.read(input_path, dtype="float32", always_2d=True)
@@ -59,7 +58,7 @@ class AudioSignal:
         sf.write(output_filename, self.data, int(self.sample_rate))
         sd.wait()
 
-    def plot(self, step: int = 25):
+    def plot(self, step: int = 25) -> "Optional[{plot}]":
         dims = len(self.data.shape)
         if dims == 2:
             y = self.stereo_to_mono()
@@ -69,7 +68,9 @@ class AudioSignal:
             raise AttributeError(f"Data has incorrect number of dimensions: {dims}")
         y = y[::step]
 
-        x = np.arange(0, y.shape[0] * step * 1/self.sample_rate, step*1/self.sample_rate)
+        x = np.arange(
+            0, y.shape[0] * step * 1 / self.sample_rate, step * 1 / self.sample_rate
+        )
         return sns.lineplot(x=x, y=y)
 
     def spectrum(self, n_samples_per_segment: int = None) -> "STFTSignal":
@@ -84,24 +85,27 @@ class STFTSignal:
     sample_rate: float
 
     @staticmethod
-    def from_audio(audio: AudioSignal, n_samples_per_segment: int = None) -> "STFTSignal":
-        # TODO technically we should use abs but it might break inverting
-        #  so abs is used only for plotting
+    def from_audio(
+        audio: AudioSignal, n_samples_per_segment: int = None
+    ) -> "STFTSignal":
         """
         computes stft from audio signal with given number of samples in window
         """
         if n_samples_per_segment is None:
             n_samples_per_segment = 256
-        f, t, zxx = stft(audio.stereo_to_mono(), nperseg=n_samples_per_segment, fs=audio.sample_rate)
+        f, t, zxx = stft(
+            audio.stereo_to_mono(), nperseg=n_samples_per_segment, fs=audio.sample_rate
+        )
         return STFTSignal(zxx, f, t, audio.sample_rate)
 
     def plot(self, f_step: int = 1, t_step: int = 5) -> Any:
-        tmp = int(self.t.size/10)
+        # TODO check tmp
+        tmp = int(self.t.size / 10)
         t = self.t[::t_step]
         f = self.f[:tmp:f_step]
         z = np.abs(self.zxx[:tmp:f_step, ::t_step])
         plot = plt.pcolormesh(t, f, z, vmin=0, vmax=np.max(z))
-        plt.ylim(0, max(f)/6)
+        plt.ylim(0, max(f) / 6)
 
         return plot
 

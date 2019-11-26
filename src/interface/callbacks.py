@@ -1,24 +1,34 @@
-# this file contains callback definitions for GUI elements
-
-from audio.processing import Vocoder, Filter
-from audio.recording import AudioSignal
-import numpy as np
+from dataclasses import dataclass
 from os import path
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+import constants
+from audio.processing import Filter, Vocoder
+from audio.recording import AudioSignal
 
 
-def process(params):
+@dataclass
+class Parameters:
+    num_filters: int = 0
+    input_path: str = None
+    output_path: str = None
+    compression_level: float = 0.0
+
+
+def process(params: Parameters):
     if path.exists(params.input_path):
         audio = AudioSignal.from_wav(params.input_path)
     else:
         return
 
     log_range = np.logspace(
-        0, np.log10(audio.spectrum().sample_rate / 2), 2 * params.num_of_filters
+        0, np.log10(audio.spectrum().sample_rate / 2), 2 * params.num_filters
     )
     filters = [
         Filter(log_range[2 * n + 1], (log_range[2 * n + 1] - log_range[2 * n]) / 2)
-        for n in range(0, params.num_of_filters)
+        for n in range(0, params.num_filters)
     ]
 
     v = Vocoder()
@@ -32,32 +42,32 @@ def process(params):
 
     plt.figure(figsize=(ploty, plotx), dpi=80)
     audio.plot()
-    plt.savefig("../img/input_signal.png")
+    plt.savefig(constants.INPUT_SIGNAL)
 
     plt.figure(figsize=(ploty, plotx), dpi=80)
     audio.spectrum().plot()
-    plt.savefig("../img/input_spectrum.png")
+    plt.savefig(constants.INPUT_SPECTRUM)
 
     plt.figure(figsize=(ploty, plotx), dpi=80)
     inverted.plot()
-    plt.savefig("../img/output_signal.png")
+    plt.savefig(constants.OUTPUT_SIGNAL)
 
     plt.figure(figsize=(ploty, plotx), dpi=80)
     compressed_spectrum.plot()
-    plt.savefig("../img/output_spectrum.png")
+    plt.savefig(constants.OUTPUT_SPECTRUM)
 
-    plt.close('all')
+    plt.close("all")
 
 
 # play input audio
-def play_in_audio(params):
+def play_in_audio(params: Parameters):
     if path.exists(params.input_path):
         audio = AudioSignal.from_wav(params.input_path)
         audio.play()
 
 
 # play output audio
-def play_out_audio(params):
+def play_out_audio(params: Parameters):
     if path.exists(params.output_path):
         audio = AudioSignal.from_wav(params.output_path)
         audio.play()

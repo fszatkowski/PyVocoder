@@ -1,7 +1,10 @@
-from audio.recording import AudioSignal, STFTSignal
 from dataclasses import dataclass
-import numpy as np
 from typing import *
+from tqdm import tqdm
+
+import numpy as np
+
+from audio.recording import AudioSignal, STFTSignal
 
 
 @dataclass
@@ -24,12 +27,12 @@ class Vocoder:
     def modulate(
         audio: AudioSignal, filters: Sequence[Filter], n_samples_per_window: int = None
     ) -> Tuple[STFTSignal, List[CompressedBandwidth], float]:
-        # compute compress bandwidth for each filter
+        # compute compressed bandwidth for each filter
         stft = audio.spectrum(n_samples_per_window)
         stft_frequencies = stft.f
         modulated_bandwidths = []
 
-        for f in filters:
+        for f in tqdm(filters, desc="Compressing signal.", total=len(filters)):
             # get the frequencies corresponding to filter's bandwidth
             mask = (stft_frequencies >= (f.frequency - f.bandwidth)) & (
                 stft_frequencies <= (f.frequency + f.bandwidth)
@@ -65,7 +68,11 @@ class Vocoder:
         # for bandwidths covered by filters we set constant amplitude which should be equal to noise modulating
         zxx = np.copy(stft.zxx)
         zxx[:, :] = 0
-        for b in modulated_bandwidths:
+        for b in tqdm(
+            modulated_bandwidths,
+            desc="Decompressing signal.",
+            total=len(modulated_bandwidths),
+        ):
             zxx[b.f_min_idx : b.f_max_idx, :] = b.amplitude
 
         stft.zxx = zxx
@@ -86,5 +93,4 @@ def _find_min_max_indices(
     min_f_idx = np.argwhere(discrete_frequencies == filtered_frequencies[0])[0, 0]
     max_f_idx = np.argwhere(discrete_frequencies == filtered_frequencies[-1])[0, 0]
     # since numpy indexing is not inclusive for the last element, add + 1 to last index to allow easier slicing
-    # TODO if something doesn't work the bug may be here:D
     return min_f_idx, max_f_idx + 1
